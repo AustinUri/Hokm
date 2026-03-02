@@ -1,0 +1,14 @@
+# Hokm/crates/hokm_client/Cargo.toml
+#
+# This crate is the APP you run.
+# For now: super tiny program to prove everything compiles.
+# Later: TUI then desktop UI.
+
+[package]
+name = "hokm_client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# This tells hokm_client: "use hokm_core from the folder next to it"
+hokm_core = { path = "../hokm_core" }

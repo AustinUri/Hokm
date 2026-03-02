@@ -1,0 +1,18 @@
+# Hokm/crates/hokm_core/Cargo.toml
+#
+# This crate is the RULES ENGINE.
+# It will be used by:
+# - hokm_client (offline + UI)
+# - hokm_server (multiplayer authoritative server)
+# - hokm_ai (bots)
+#
+# It should NOT depend on UI libraries or networking libraries.
+
+[package]
+name = "hokm_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Keep this empty for now.
+# Add serde later when we start networking and want to serialize messages.

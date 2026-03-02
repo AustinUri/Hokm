@@ -1,8 +1,24 @@
-[package]
-name = "hokm"
-version = "0.1.0"
-edition = "2021"
+# Hokm/Cargo.toml
+#
+# This is the WORKSPACE file.
+# A workspace is like a big "container" that holds multiple Rust crates.
+#
+# Why do we want a workspace?
+# - hokm_core = the rules of the game (no UI, no networking)
+# - hokm_client = the program you run (TUI now, GUI later)
+# - hokm_server = later (multiplayer)
+# - hokm_ai = later (bots)
+#
+# If we DON'T use a workspace, everything gets mixed and messy later.
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = [
+  "crates/hokm_core",
+  "crates/hokm_client",
+  # later you will add:
+  # "crates/hokm_ai",
+  # "crates/hokm_server",
+]
 
-[dependencies]
+# Rust's dependency resolver version. Use 2 for modern behavior.
+resolver = "2"
