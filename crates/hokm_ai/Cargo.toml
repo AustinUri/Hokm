@@ -1,0 +1,7 @@
+[package]
+name = "hokm_ai"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hokm_core = { path = "../hokm_core" }

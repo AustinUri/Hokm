@@ -12,3 +12,4 @@ edition = "2021"
 [dependencies]
 # This tells hokm_client: "use hokm_core from the folder next to it"
 hokm_core = { path = "../hokm_core" }
+hokm_ai = { path = "../hokm_ai" }
