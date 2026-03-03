@@ -9,7 +9,11 @@ name = "hokm_client"
 version = "0.1.0"
 edition = "2021"
 
+
+
 [dependencies]
-# This tells hokm_client: "use hokm_core from the folder next to it"
 hokm_core = { path = "../hokm_core" }
-hokm_ai = { path = "../hokm_ai" }
+hokm_ai   = { path = "../hokm_ai" }
+
+ratatui = "0.29"
+crossterm = "0.29"

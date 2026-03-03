@@ -1,24 +1,25 @@
 // Hokm/crates/hokm_core/src/deal.rs
 //
-// This module is responsible for:
-// - creating a deck of 52 cards
-// - shuffling it using a seed (deterministic shuffle)
-// - dealing 13 cards to each of 4 players
+// This module handles:
+// - creating a deck
+// - shuffling with a seed (deterministic)
+// - dealing hands
+// - choosing Hokm chooser by "first Ace draw"
 //
-// Why seed?
-// Because:
-// - debugging becomes easy (same seed = same deal)
-// - server can store seed in logs
-// - offline mode can reproduce games
+// IMPORTANT RULES (your variant):
+// 1) Before the real deal, we do a pre-draw to find the chooser:
+//    - Reveal cards round-robin to players 0,1,2,3,0,1...
+//    - First Ace that appears => that player is the Hokm chooser.
+// 2) Dealer is the player right BEFORE chooser (so chooser is left of dealer).
+// 3) After chooser is found, we deal AGAIN for the real round.
+// 4) Real dealing starts from left of dealer (dealer.next()).
 
-use crate::{Card, Rank, Suit};
+use crate::{Card, PlayerId, Rank, Suit};
 
-/// A small helper: list all suits in a stable order.
 fn all_suits() -> [Suit; 4] {
     [Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades]
 }
 
-/// A small helper: list all ranks in a stable order.
 fn all_ranks() -> [Rank; 13] {
     [
         Rank::Two,
@@ -37,46 +38,29 @@ fn all_ranks() -> [Rank; 13] {
     ]
 }
 
-/// Build a fresh ordered 52-card deck.
-///
-/// Ordered deck is important because:
-/// - if shuffle is deterministic, output is deterministic
-/// - tests become predictable
+/// Build an ordered 52-card deck.
 pub fn build_deck() -> Vec<Card> {
     let mut deck = Vec::with_capacity(52);
-
     for suit in all_suits() {
         for rank in all_ranks() {
             deck.push(Card { suit, rank });
         }
     }
-
     deck
 }
 
-/// Deterministic pseudo-random generator (simple).
-///
-/// This is NOT cryptographically secure.
-/// It is good enough for:
-/// - offline mode
-/// - deterministic debug shuffles
-///
-/// For real online fairness, we can upgrade later
-/// (server can use a secure RNG or commit-reveal).
+/// Tiny deterministic RNG (not crypto-secure).
 struct XorShift64 {
     state: u64,
 }
 
 impl XorShift64 {
     fn new(seed: u64) -> Self {
-        // If seed is 0, xorshift becomes annoying. Fix it.
         let seed = if seed == 0 { 0x9E3779B97F4A7C15 } else { seed };
         Self { state: seed }
     }
 
-    /// Get next random u64 (deterministic based on initial seed).
     fn next_u64(&mut self) -> u64 {
-        // xorshift64*
         let mut x = self.state;
         x ^= x << 13;
         x ^= x >> 7;
@@ -85,46 +69,50 @@ impl XorShift64 {
         x
     }
 
-    /// Get a random number in range [0, n)
     fn gen_range(&mut self, n: usize) -> usize {
-        // VERY IMPORTANT: n must not be 0
         (self.next_u64() as usize) % n
     }
 }
 
-/// Shuffle a deck in-place using Fisher-Yates shuffle.
-///
-/// Fisher-Yates is the standard correct shuffle:
-/// - no bias (for a good RNG)
-/// - simple
+/// Fisher-Yates shuffle (correct shuffle) using deterministic RNG.
 pub fn shuffle_in_place(deck: &mut [Card], seed: u64) {
     let mut rng = XorShift64::new(seed);
-
-    // Go from the end to the beginning:
-    // swap each card with a random earlier card (including itself).
     for i in (1..deck.len()).rev() {
         let j = rng.gen_range(i + 1);
         deck.swap(i, j);
     }
 }
 
-/// Deal 13 cards to each of 4 players.
-/// Returns [hand0, hand1, hand2, hand3].
+/// Your setup rule:
+/// Reveal cards to players in order 0,1,2,3,0,1...
+/// First ACE that appears => that player is the chooser.
 ///
-/// The deal order is:
-/// card 0 -> player 0
-/// card 1 -> player 1
-/// card 2 -> player 2
-/// card 3 -> player 3
-/// card 4 -> player 0
-/// ... etc
-///
-/// This matches typical dealing around the table.
-pub fn deal_hands(seed: u64) -> [Vec<Card>; 4] {
+/// Returns: (chooser, ace_card_that_was_drawn)
+pub fn chooser_by_first_ace(seed: u64) -> (PlayerId, Card) {
     let mut deck = build_deck();
     shuffle_in_place(&mut deck, seed);
 
-    // Create 4 empty hands with capacity 13 each
+    for (i, card) in deck.into_iter().enumerate() {
+        let pid = PlayerId((i % 4) as u8);
+        if card.rank == Rank::Ace {
+            return (pid, card);
+        }
+    }
+
+    // A 52-card deck always contains aces, so this can't happen.
+    panic!("No Ace found in deck (impossible)");
+}
+
+/// Deal 13 cards each, BUT:
+/// The FIRST card goes to the player left of the dealer (dealer.next()).
+///
+/// Example:
+/// - dealer=0 => first card to 1
+/// - dealer=2 => first card to 3
+pub fn deal_hands_with_dealer(seed: u64, dealer: PlayerId) -> [Vec<Card>; 4] {
+    let mut deck = build_deck();
+    shuffle_in_place(&mut deck, seed);
+
     let mut hands: [Vec<Card>; 4] = [
         Vec::with_capacity(13),
         Vec::with_capacity(13),
@@ -132,23 +120,25 @@ pub fn deal_hands(seed: u64) -> [Vec<Card>; 4] {
         Vec::with_capacity(13),
     ];
 
-    // Distribute cards in round-robin
+    let start = dealer.next().0 as usize;
+
     for (i, card) in deck.into_iter().enumerate() {
-        hands[i % 4].push(card);
+        let pid = (start + (i % 4)) % 4;
+        hands[pid].push(card);
     }
 
-    // At the end each player has 13 cards
     hands
 }
 
-/// Optional: sort a hand for nicer UI.
-/// Many people like to see suits grouped and ranks ordered.
-/// This is NOT required for the rules to work.
-///
-/// You can call this in the client or server.
+/// Convenience: old behavior wrapper.
+/// This makes the FIRST card go to player 0 by pretending dealer is 3 (since 3.next()=0).
+pub fn deal_hands(seed: u64) -> [Vec<Card>; 4] {
+    deal_hands_with_dealer(seed, PlayerId(3))
+}
+
+/// Optional hand sorting for nicer UI.
+/// Does NOT affect game rules.
 pub fn sort_hand(hand: &mut Vec<Card>) {
-    // Define a suit order (you can change this if you want):
-    // Clubs < Diamonds < Hearts < Spades
     fn suit_key(s: Suit) -> u8 {
         match s {
             Suit::Clubs => 0,
@@ -157,7 +147,5 @@ pub fn sort_hand(hand: &mut Vec<Card>) {
             Suit::Spades => 3,
         }
     }
-
-    // Sort by suit first, then by rank
     hand.sort_by_key(|c| (suit_key(c.suit), c.rank as u8));
 }

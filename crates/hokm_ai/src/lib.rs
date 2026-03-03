@@ -83,7 +83,7 @@ fn medium_pick(game: &GameState, _bot: PlayerId, legal_cards: &[Card]) -> Card {
     let (_cur_winner_pid, cur_winner_card) = current_winner(&game.current_trick, hokm);
 
     // Find all legal cards that beat current winning card.
-    let mut winning: Vec<Card> = legal_cards
+    let winning: Vec<Card> = legal_cards
         .iter()
         .copied()
         .filter(|c| beats(*c, cur_winner_card, lead, hokm))
@@ -109,7 +109,7 @@ fn hard_pick(game: &GameState, bot: PlayerId, legal_cards: &[Card]) -> Card {
     // If leading: try to lead low non-trump if possible (save trump).
     if game.current_trick.is_empty() {
         // Prefer non-trump cards, cheapest first.
-        let mut non_trump: Vec<Card> = legal_cards
+        let non_trump: Vec<Card> = legal_cards
             .iter()
             .copied()
             .filter(|c| c.suit != hokm)
@@ -130,7 +130,7 @@ fn hard_pick(game: &GameState, bot: PlayerId, legal_cards: &[Card]) -> Card {
     }
 
     // Opponent is winning -> try to win cheaply.
-    let mut winning: Vec<Card> = legal_cards
+    let winning: Vec<Card> = legal_cards
         .iter()
         .copied()
         .filter(|c| beats(*c, cur_winner_card, lead, hokm))
@@ -138,7 +138,7 @@ fn hard_pick(game: &GameState, bot: PlayerId, legal_cards: &[Card]) -> Card {
 
     if !winning.is_empty() {
         // Prefer a winning card that is NOT trump if possible (save trump).
-        let mut winning_non_trump: Vec<Card> =
+        let winning_non_trump: Vec<Card> =
             winning.iter().copied().filter(|c| c.suit != hokm).collect();
         if !winning_non_trump.is_empty() {
             return cheapest_card(&winning_non_trump, Some(hokm));
