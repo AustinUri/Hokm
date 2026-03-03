@@ -15,7 +15,7 @@
 
 use hokm_core::{Action, Card, GameState, PlayerId, Suit};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Difficulty {
     Easy,
     Medium,

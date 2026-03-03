@@ -8,7 +8,7 @@
 name = "hokm_client"
 version = "0.1.0"
 edition = "2021"
-
+default-run = "hokm_client"
 
 
 [dependencies]
@@ -17,3 +17,5 @@ hokm_ai   = { path = "../hokm_ai" }
 
 ratatui = "0.29"
 crossterm = "0.29"
+eframe = "0.30"
+egui = "0.30"
